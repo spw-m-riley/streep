@@ -218,6 +218,10 @@ func buildDotenvFile(comment string, keys []string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n", comment)
 	for _, k := range keys {
+		if k == "GITHUB_TOKEN" {
+			b.WriteString("# Required by act to clone remote actions. Must be a classic PAT with 'repo' scope.\n")
+			b.WriteString("# Create one at: https://github.com/settings/tokens (Tokens (classic))\n")
+		}
 		fmt.Fprintf(&b, "%s=\n", k)
 	}
 	return b.String()

@@ -33,6 +33,12 @@ var matchers = []matcher{
 		tokens:     []string{"permission denied", "/var/run/docker.sock"},
 	},
 	{
+		rule:       "github-token-missing",
+		reason:     "GITHUB_TOKEN is missing or invalid in .secrets — act cannot clone remote actions from GitHub.",
+		suggestion: "Set a valid GitHub PAT as GITHUB_TOKEN in .secrets. Run `streep check` to validate.",
+		tokens:     []string{"authentication required", "invalid username or token"},
+	},
+	{
 		rule:       "missing-secrets-file",
 		reason:     "act could not read a required credentials file.",
 		suggestion: "Run `streep new role`, then copy and fill .secrets/.env/.vars/.input before running.",

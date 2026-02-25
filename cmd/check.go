@@ -92,6 +92,19 @@ func executeCheck(args []string, stdout io.Writer, stderr io.Writer) error {
 		} else {
 			fmt.Fprintf(stdout, "✔ %s: all %d key(s) present in %s\n", cf.label, len(required), cf.real)
 		}
+
+		// Specifically validate GITHUB_TOKEN format — act requires a classic PAT (ghp_…) to clone
+		// remote action repositories. Fine-grained PATs and GitHub Apps tokens will fail.
+		if cf.label == "secrets" {
+			if tok := strings.TrimSpace(actual["GITHUB_TOKEN"]); tok != "" {
+				if !strings.HasPrefix(tok, "ghp_") {
+					fmt.Fprintf(stdout, "⚠  GITHUB_TOKEN does not look like a classic PAT (expected ghp_…).\n")
+					fmt.Fprintf(stdout, "   act needs a classic PAT with 'repo' scope to clone remote actions.\n")
+					fmt.Fprintf(stdout, "   Create one at: https://github.com/settings/tokens (Tokens (classic))\n")
+					allPassed = false
+				}
+			}
+		}
 	}
 
 	if allPassed {
