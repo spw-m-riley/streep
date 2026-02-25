@@ -13,7 +13,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X streep/cmd.Version={{.Version}}
+      - -s -w -X streep/cmd.Version={{.Version}} -X streep/cmd.Commit={{.ShortCommit}} -X streep/cmd.Date={{.Date}}
 
 archives:
   - formats:

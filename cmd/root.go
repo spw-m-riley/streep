@@ -28,8 +28,11 @@ Commands:
   policy      Run workflow security policy checks
   diagnose    Analyze run logs and suggest fixes
   version     Print the version
+  update      Check for a newer version
+  completion  Generate shell completion scripts
+  help        Show help for a command
 
-Run "streep <command> --help" for more information about a command.
+Run "streep help <command>" for more information about a command.
 `
 
 func Execute(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -37,12 +40,21 @@ func Execute(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("stdout and stderr are required")
 	}
 
-	if len(args) == 0 || isHelp(args[0]) {
+	if len(args) == 0 {
 		_, err := io.WriteString(stdout, rootUsage)
 		return err
 	}
 
 	switch args[0] {
+	case "help":
+		if len(args) < 2 {
+			_, err := io.WriteString(stdout, rootUsage)
+			return err
+		}
+		return Execute([]string{args[1], "--help"}, stdout, stderr)
+	case "-h", "--help":
+		_, err := io.WriteString(stdout, rootUsage)
+		return err
 	case "new":
 		return executeNew(args[1:], stdout, stderr)
 	case "check":
@@ -75,6 +87,10 @@ func Execute(args []string, stdout io.Writer, stderr io.Writer) error {
 		return executeDiagnose(args[1:], stdout, stderr)
 	case "version":
 		return executeVersion(args[1:], stdout, stderr)
+	case "update":
+		return executeUpdate(args[1:], stdout, stderr)
+	case "completion":
+		return executeCompletion(args[1:], stdout, stderr)
 	default:
 		return fmt.Errorf("unknown command %q\n\n%s", args[0], strings.TrimSpace(rootUsage))
 	}
