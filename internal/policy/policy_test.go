@@ -1,0 +1,74 @@
+package policy
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestCheckDirFindings(t *testing.T) {
+	dir := t.TempDir()
+	wfDir := filepath.Join(dir, ".github", "workflows")
+	if err := os.MkdirAll(wfDir, 0o755); err != nil {
+		t.Fatalf("mkdir workflows: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wfDir, "ci.yml"), []byte(`
+on:
+  pull_request_target:
+permissions: write-all
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+`), 0o644); err != nil {
+		t.Fatalf("write workflow: %v", err)
+	}
+
+	findings, err := CheckDir(dir)
+	if err != nil {
+		t.Fatalf("CheckDir() error: %v", err)
+	}
+	if len(findings) < 3 {
+		t.Fatalf("expected at least 3 findings, got %d (%+v)", len(findings), findings)
+	}
+}
+
+func TestCheckDirRespectsConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".github", "workflows"), 0o755); err != nil {
+		t.Fatalf("mkdir workflows: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".github", "workflows", "ci.yml"), []byte(`
+on: [pull_request_target]
+permissions: write-all
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+`), 0o644); err != nil {
+		t.Fatalf("write workflow: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".streep"), 0o755); err != nil {
+		t.Fatalf("mkdir .streep: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".streep", "policy.yaml"), []byte(`
+rules:
+  write_all_permissions: false
+  pull_request_target: false
+`), 0o644); err != nil {
+		t.Fatalf("write policy config: %v", err)
+	}
+
+	findings, err := CheckDir(dir)
+	if err != nil {
+		t.Fatalf("CheckDir() error: %v", err)
+	}
+	for _, f := range findings {
+		if f.Rule == "write-all-permissions" || f.Rule == "pull-request-target" {
+			t.Fatalf("expected configured rules disabled, got finding: %+v", f)
+		}
+	}
+}
