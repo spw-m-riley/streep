@@ -46,9 +46,5 @@ func executeRehearse(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	fmt.Fprintf(stdout, "Running: act %s\n\n", strings.Join(cmdArgs, " "))
 
-	cmd := exec.Command(actPath, cmdArgs...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	return cmd.Run()
+	return runAct(actPath, cmdArgs, stdout, stderr)
 }

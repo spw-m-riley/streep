@@ -98,10 +98,7 @@ func executePerform(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	fmt.Fprintf(stdout, "Performing: act %s\n\n", strings.Join(cmdArgs, " "))
 
-	cmd := exec.Command(actPath, cmdArgs...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	if err := runAct(actPath, cmdArgs, stdout, stderr); err != nil {
 		return err
 	}
 
