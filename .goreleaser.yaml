@@ -1,0 +1,44 @@
+version: 2
+
+project_name: streep
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X streep/cmd.Version={{.Version}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+
+brews:
+  - repository:
+      owner: spw-m-riley
+      name: homebrew-tools
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/spw-m-riley/streep"
+    description: "Helps prepare local projects for act"
+    install: |
+      bin.install "streep"
+    test: |
+      system "#{bin}/streep version"

@@ -27,6 +27,7 @@ Commands:
   fingerprint Generate or compare run fingerprints
   policy      Run workflow security policy checks
   diagnose    Analyze run logs and suggest fixes
+  version     Print the version
 
 Run "streep <command> --help" for more information about a command.
 `
@@ -72,6 +73,8 @@ func Execute(args []string, stdout io.Writer, stderr io.Writer) error {
 		return executePolicy(args[1:], stdout, stderr)
 	case "diagnose":
 		return executeDiagnose(args[1:], stdout, stderr)
+	case "version":
+		return executeVersion(args[1:], stdout, stderr)
 	default:
 		return fmt.Errorf("unknown command %q\n\n%s", args[0], strings.TrimSpace(rootUsage))
 	}
