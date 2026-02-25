@@ -30,15 +30,16 @@ checksum:
 changelog:
   use: github
 
-brews:
+homebrew_casks:
   - repository:
       owner: spw-m-riley
       name: homebrew-tools
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
     homepage: "https://github.com/spw-m-riley/streep"
     description: "Helps prepare local projects for act"
-    install: |
-      bin.install "streep"
-    test: |
-      system "#{bin}/streep version"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/streep"]
+          end
