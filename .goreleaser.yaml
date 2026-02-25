@@ -30,6 +30,9 @@ checksum:
 changelog:
   use: github
 
+release:
+  replace_existing_artifacts: true
+
 homebrew_casks:
   - repository:
       owner: spw-m-riley
