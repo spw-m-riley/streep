@@ -152,7 +152,7 @@ func ExpandMatrix(dimensions map[string][]string, maxRows int) []map[string]stri
 
 func collectJobs(doc *yaml.Node) []JobOverview {
 	var jobs []JobOverview
-	visitMapValue(doc, "jobs", func(jobsNode *yaml.Node) {
+	visitMappingValue(doc, "jobs", func(jobsNode *yaml.Node) {
 		if jobsNode.Kind != yaml.MappingNode {
 			return
 		}
@@ -173,7 +173,7 @@ func collectJobs(doc *yaml.Node) []JobOverview {
 
 func collectNeeds(jobNode *yaml.Node) []string {
 	var needs []string
-	visitMapValue(jobNode, "needs", func(needsNode *yaml.Node) {
+	visitMappingValue(jobNode, "needs", func(needsNode *yaml.Node) {
 		switch needsNode.Kind {
 		case yaml.ScalarNode:
 			if needsNode.Value != "" {
@@ -193,8 +193,8 @@ func collectNeeds(jobNode *yaml.Node) []string {
 
 func collectMatrixDimensions(jobNode *yaml.Node) map[string][]string {
 	dimensions := map[string][]string{}
-	visitMapValue(jobNode, "strategy", func(strategyNode *yaml.Node) {
-		visitMapValue(strategyNode, "matrix", func(matrixNode *yaml.Node) {
+	visitMappingValue(jobNode, "strategy", func(strategyNode *yaml.Node) {
+		visitMappingValue(strategyNode, "matrix", func(matrixNode *yaml.Node) {
 			if matrixNode.Kind != yaml.MappingNode {
 				return
 			}
@@ -222,7 +222,7 @@ func collectMatrixDimensions(jobNode *yaml.Node) map[string][]string {
 
 func collectWorkflowEvents(doc *yaml.Node) []string {
 	set := map[string]struct{}{}
-	visitMapValue(doc, "on", func(onNode *yaml.Node) {
+	visitMappingValue(doc, "on", func(onNode *yaml.Node) {
 		switch onNode.Kind {
 		case yaml.ScalarNode:
 			if onNode.Value != "" {
@@ -245,12 +245,12 @@ func collectWorkflowEvents(doc *yaml.Node) []string {
 
 func collectUsesActions(doc *yaml.Node) []string {
 	set := map[string]struct{}{}
-	visitMapValue(doc, "jobs", func(jobsNode *yaml.Node) {
+	visitMappingValue(doc, "jobs", func(jobsNode *yaml.Node) {
 		for i := 1; i < len(jobsNode.Content); i += 2 {
 			jobNode := jobsNode.Content[i]
-			visitMapValue(jobNode, "steps", func(stepsNode *yaml.Node) {
+			visitMappingValue(jobNode, "steps", func(stepsNode *yaml.Node) {
 				for _, step := range stepsNode.Content {
-					visitMapValue(step, "uses", func(useNode *yaml.Node) {
+					visitMappingValue(step, "uses", func(useNode *yaml.Node) {
 						if useNode.Kind == yaml.ScalarNode && useNode.Value != "" {
 							set[useNode.Value] = struct{}{}
 						}
@@ -308,7 +308,7 @@ func listWorkflowFiles(dir string) ([]string, error) {
 
 func mappingScalar(node *yaml.Node, key string) string {
 	value := ""
-	visitMapValue(node, key, func(v *yaml.Node) {
+	visitMappingValue(node, key, func(v *yaml.Node) {
 		if v.Kind == yaml.ScalarNode {
 			value = v.Value
 		}
@@ -326,18 +326,6 @@ func mappingHasKey(node *yaml.Node, key string) bool {
 		}
 	}
 	return false
-}
-
-func visitMapValue(node *yaml.Node, key string, fn func(*yaml.Node)) {
-	if node == nil || node.Kind != yaml.MappingNode {
-		return
-	}
-	for i := 0; i+1 < len(node.Content); i += 2 {
-		if node.Content[i].Value == key {
-			fn(node.Content[i+1])
-			return
-		}
-	}
 }
 
 func collectScalarValues(node *yaml.Node, out *[]string) {

@@ -97,14 +97,14 @@ func lintWorkflowFile(path string, fix bool) (changed bool, fixedActions int, is
 	}
 
 	jobIDs := map[string]struct{}{}
-	visitMapValue(doc, "jobs", func(jobsNode *yaml.Node) {
+	visitMappingValue(doc, "jobs", func(jobsNode *yaml.Node) {
 		for i := 0; i+1 < len(jobsNode.Content); i += 2 {
 			jobID := jobsNode.Content[i].Value
 			jobIDs[jobID] = struct{}{}
 		}
 	})
 
-	visitMapValue(doc, "jobs", func(jobsNode *yaml.Node) {
+	visitMappingValue(doc, "jobs", func(jobsNode *yaml.Node) {
 		for i := 0; i+1 < len(jobsNode.Content); i += 2 {
 			jobID := jobsNode.Content[i].Value
 			jobNode := jobsNode.Content[i+1]
@@ -119,9 +119,9 @@ func lintWorkflowFile(path string, fix bool) (changed bool, fixedActions int, is
 				}
 			}
 
-			visitMapValue(jobNode, "steps", func(stepsNode *yaml.Node) {
+			visitMappingValue(jobNode, "steps", func(stepsNode *yaml.Node) {
 				for _, step := range stepsNode.Content {
-					visitMapValue(step, "uses", func(useNode *yaml.Node) {
+					visitMappingValue(step, "uses", func(useNode *yaml.Node) {
 						if useNode.Kind != yaml.ScalarNode || useNode.Value == "" {
 							return
 						}
@@ -141,7 +141,7 @@ func lintWorkflowFile(path string, fix bool) (changed bool, fixedActions int, is
 						}
 					})
 
-					visitMapValue(step, "run", func(runNode *yaml.Node) {
+					visitMappingValue(step, "run", func(runNode *yaml.Node) {
 						if runNode.Kind != yaml.ScalarNode {
 							return
 						}

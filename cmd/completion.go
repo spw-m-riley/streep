@@ -118,7 +118,7 @@ complete -c streep -n "__fish_seen_subcommand_from completion" -a "bash zsh fish
 
 func executeCompletion(args []string, stdout io.Writer, _ io.Writer) error {
 	for _, arg := range args {
-		if arg == "-h" || arg == "--help" || arg == "help" {
+		if isHelp(arg) {
 			_, err := io.WriteString(stdout, completionUsage)
 			return err
 		}

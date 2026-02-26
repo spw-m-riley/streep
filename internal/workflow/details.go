@@ -3,7 +3,6 @@ package workflow
 import (
 	"bytes"
 	"fmt"
-	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -28,7 +27,7 @@ func ParseDetails(data []byte) (Details, error) {
 	doc := root.Content[0]
 
 	jobsSet := map[string]struct{}{}
-	visitMapValue(doc, "jobs", func(jobsNode *yaml.Node) {
+	visitMappingValue(doc, "jobs", func(jobsNode *yaml.Node) {
 		if jobsNode.Kind != yaml.MappingNode {
 			return
 		}
@@ -51,26 +50,4 @@ func ParseDetails(data []byte) (Details, error) {
 		Events:  collectWorkflowEvents(doc),
 		Secrets: mapKeys(secretsSet),
 	}, nil
-}
-
-func addedRemoved(current []string, baseline []string) (added []string, removed []string) {
-	baseSet := make(map[string]struct{}, len(baseline))
-	curSet := make(map[string]struct{}, len(current))
-	for _, v := range baseline {
-		baseSet[v] = struct{}{}
-	}
-	for _, v := range current {
-		curSet[v] = struct{}{}
-		if _, ok := baseSet[v]; !ok {
-			added = append(added, v)
-		}
-	}
-	for _, v := range baseline {
-		if _, ok := curSet[v]; !ok {
-			removed = append(removed, v)
-		}
-	}
-	sort.Strings(added)
-	sort.Strings(removed)
-	return added, removed
 }

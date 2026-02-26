@@ -57,7 +57,7 @@ func LintCompositeActionDir(actionsDir string) ([]LintIssue, error) {
 		doc := root.Content[0]
 
 		var runsNode *yaml.Node
-		visitMapValue(doc, "runs", func(v *yaml.Node) { runsNode = v })
+		visitMappingValue(doc, "runs", func(v *yaml.Node) { runsNode = v })
 		if runsNode == nil || runsNode.Kind != yaml.MappingNode {
 			continue
 		}
@@ -67,7 +67,7 @@ func LintCompositeActionDir(actionsDir string) ([]LintIssue, error) {
 			continue
 		}
 
-		visitMapValue(runsNode, "steps", func(stepsNode *yaml.Node) {
+		visitMappingValue(runsNode, "steps", func(stepsNode *yaml.Node) {
 			if stepsNode.Kind != yaml.SequenceNode {
 				return
 			}

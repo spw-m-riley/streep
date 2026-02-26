@@ -75,7 +75,7 @@ func ScanDir(dir string) (References, error) {
 
 		// Expression scanning on all scalars
 		var scalars []string
-		collectScalars(&root, &scalars)
+		collectScalarValues(&root, &scalars)
 		for _, s := range scalars {
 			for _, m := range reSecrets.FindAllStringSubmatch(s, -1) {
 				secrets[m[1]] = struct{}{}
@@ -112,6 +112,17 @@ func ScanDir(dir string) (References, error) {
 		Events:         sortedKeys(events),
 		MatrixCount:    totalMatrixCount,
 	}, nil
+}
+
+// DetectsArtifactActions reports whether any action reference in uses contains
+// upload-artifact or download-artifact.
+func DetectsArtifactActions(uses []string) bool {
+	for _, a := range uses {
+		if strings.Contains(a, "upload-artifact") || strings.Contains(a, "download-artifact") {
+			return true
+		}
+	}
+	return false
 }
 
 // collectRunners walks a workflow document node and collects runs-on values.
@@ -264,19 +275,6 @@ func visitMappingValue(node *yaml.Node, key string, fn func(*yaml.Node)) {
 			fn(node.Content[i+1])
 			return
 		}
-	}
-}
-
-func collectScalars(n *yaml.Node, out *[]string) {
-	if n == nil {
-		return
-	}
-	if n.Kind == yaml.ScalarNode {
-		*out = append(*out, n.Value)
-		return
-	}
-	for _, child := range n.Content {
-		collectScalars(child, out)
 	}
 }
 

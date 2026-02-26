@@ -32,7 +32,7 @@ func executeDoctor(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
 
 	for _, arg := range args {
-		if arg == "-h" || arg == "--help" || arg == "help" {
+		if isHelp(arg) {
 			_, err := io.WriteString(stdout, doctorUsage)
 			return err
 		}
@@ -57,7 +57,7 @@ func executeDoctor(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	// act presence/version
 	if v, err := actVersion(); err != nil {
-		fmt.Fprintf(stdout, "✘ act: %v\n", err)
+		fmt.Fprintf(stdout, "✗ act: %v\n", err)
 		issues++
 	} else {
 		fmt.Fprintf(stdout, "✔ act: %s\n", v)
@@ -65,7 +65,7 @@ func executeDoctor(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	// docker presence/daemon
 	if v, err := system.DockerStatus(); err != nil {
-		fmt.Fprintf(stdout, "✘ docker: %v\n", err)
+		fmt.Fprintf(stdout, "✗ docker: %v\n", err)
 		issues++
 	} else {
 		fmt.Fprintf(stdout, "✔ docker: %s\n", v)
@@ -75,7 +75,7 @@ func executeDoctor(args []string, stdout io.Writer, stderr io.Writer) error {
 	actrcPath := filepath.Join(dir, ".actrc")
 	if _, err := os.Stat(actrcPath); err != nil {
 		if os.IsNotExist(err) {
-			fmt.Fprintln(stdout, "✘ config: .actrc not found (run 'streep new role')")
+			fmt.Fprintln(stdout, "✗ config: .actrc not found (run 'streep new role')")
 			issues++
 		} else {
 			return fmt.Errorf("failed to stat .actrc: %w", err)
@@ -147,7 +147,7 @@ func doctorCredentialChecks(dir string, out io.Writer) (int, error) {
 		checked++
 
 		if _, err := os.Stat(realPath); os.IsNotExist(err) {
-			fmt.Fprintf(out, "✘ %s: %s not found (copy from %s)\n", cf.label, cf.real, cf.example)
+			fmt.Fprintf(out, "✗ %s: %s not found (copy from %s)\n", cf.label, cf.real, cf.example)
 			issues++
 			continue
 		}
@@ -166,7 +166,7 @@ func doctorCredentialChecks(dir string, out io.Writer) (int, error) {
 		}
 
 		if len(missing) > 0 {
-			fmt.Fprintf(out, "✘ %s: missing or empty values in %s: %s\n", cf.label, cf.real, strings.Join(missing, ", "))
+			fmt.Fprintf(out, "✗ %s: missing or empty values in %s: %s\n", cf.label, cf.real, strings.Join(missing, ", "))
 			issues++
 		} else {
 			fmt.Fprintf(out, "✔ %s: all %d key(s) present in %s\n", cf.label, len(required), cf.real)
@@ -184,7 +184,7 @@ func doctorEventChecks(dir string, out io.Writer) (int, error) {
 	eventsDir := filepath.Join(dir, ".act", "events")
 	entries, err := os.ReadDir(eventsDir)
 	if os.IsNotExist(err) {
-		fmt.Fprintln(out, "✘ events: .act/events not found (run 'streep new role')")
+		fmt.Fprintln(out, "✗ events: .act/events not found (run 'streep new role')")
 		return 1, nil
 	}
 	if err != nil {
@@ -199,7 +199,7 @@ func doctorEventChecks(dir string, out io.Writer) (int, error) {
 	}
 
 	if count == 0 {
-		fmt.Fprintln(out, "✘ events: no .json payload files found in .act/events")
+		fmt.Fprintln(out, "✗ events: no .json payload files found in .act/events")
 		return 1, nil
 	}
 
@@ -213,14 +213,14 @@ func doctorArtifactChecks(dir string, out io.Writer) (int, error) {
 		return 0, fmt.Errorf("failed to scan workflows for artifact usage: %w", err)
 	}
 
-	if !detectsArtifactActions(refs.UsesActions) {
+	if !workflow.DetectsArtifactActions(refs.UsesActions) {
 		fmt.Fprintln(out, "✔ artifacts: not required by workflows")
 		return 0, nil
 	}
 
 	artifactsDir := filepath.Join(dir, ".artifacts")
 	if _, err := os.Stat(artifactsDir); os.IsNotExist(err) {
-		fmt.Fprintln(out, "✘ artifacts: upload/download-artifact is used but .artifacts/ is missing")
+		fmt.Fprintln(out, "✗ artifacts: upload/download-artifact is used but .artifacts/ is missing")
 		return 1, nil
 	}
 	if err != nil {
@@ -229,13 +229,4 @@ func doctorArtifactChecks(dir string, out io.Writer) (int, error) {
 
 	fmt.Fprintln(out, "✔ artifacts: .artifacts/ present")
 	return 0, nil
-}
-
-func detectsArtifactActions(actions []string) bool {
-	for _, a := range actions {
-		if strings.Contains(a, "upload-artifact") || strings.Contains(a, "download-artifact") {
-			return true
-		}
-	}
-	return false
 }

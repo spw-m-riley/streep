@@ -30,7 +30,7 @@ func executeExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
 
 	for _, arg := range args {
-		if arg == "-h" || arg == "--help" || arg == "help" {
+		if isHelp(arg) {
 			_, err := io.WriteString(stdout, explainUsage)
 			return err
 		}
