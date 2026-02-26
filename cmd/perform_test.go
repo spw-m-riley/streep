@@ -83,3 +83,59 @@ func TestPerformAddsEventPayloadAndPassesFlags(t *testing.T) {
 		}
 	}
 }
+
+func TestPerformUsesConfigDefaultsAndPassthrough(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script test helper is unix-only")
+	}
+
+	origWD, _ := os.Getwd()
+	origPath := os.Getenv("PATH")
+	dir := t.TempDir()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer os.Chdir(origWD)            //nolint:errcheck
+	defer os.Setenv("PATH", origPath) //nolint:errcheck
+
+	if err := os.MkdirAll(filepath.Join(dir, ".streep"), 0o755); err != nil {
+		t.Fatalf("mkdir .streep: %v", err)
+	}
+	writeCheckFile(t, filepath.Join(dir, ".streep", "config.yaml"), `
+defaults:
+  event: pull_request
+  job: test
+  workflow: .github/workflows/ci.yml
+`)
+	writeCheckFile(t, filepath.Join(dir, ".actrc"), "--secret-file .secrets\n")
+	if err := os.MkdirAll(filepath.Join(dir, ".act", "events"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeCheckFile(t, filepath.Join(dir, ".act", "events", "pull_request.json"), "{}\n")
+
+	actArgs := filepath.Join(dir, "act-args.txt")
+	fakeAct := filepath.Join(dir, "act")
+	writeCheckFile(t, fakeAct, "#!/bin/sh\nprintf '%s\\n' \"$@\" > \""+actArgs+"\"\n")
+	if err := os.Chmod(fakeAct, 0o755); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	if err := os.Setenv("PATH", dir+":"+origPath); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := executePerform([]string{"--", "--verbose"}, &out, &bytes.Buffer{}); err != nil {
+		t.Fatalf("executePerform() error: %v", err)
+	}
+
+	raw, err := os.ReadFile(actArgs)
+	if err != nil {
+		t.Fatalf("read fake act args: %v", err)
+	}
+	got := string(raw)
+	for _, want := range []string{"-j", "test", "-W", ".github/workflows/ci.yml", "pull_request", "-e", ".act/events/pull_request.json", "--verbose"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected arg %q in fake act invocation, got:\n%s", want, got)
+		}
+	}
+}

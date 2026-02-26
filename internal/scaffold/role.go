@@ -14,9 +14,10 @@ import (
 
 // RoleOptions configures the behaviour of NewRole.
 type RoleOptions struct {
-	Dir   string
-	Force bool
-	Out   io.Writer
+	Dir            string
+	Force          bool
+	Out            io.Writer
+	RunnerImageMap map[string]string
 	// Arch overrides runtime.GOARCH for testing.
 	Arch string
 }
@@ -62,7 +63,7 @@ func NewRole(opts RoleOptions) error {
 	usesArtifacts := workflow.DetectsArtifactActions(refs.UsesActions)
 	allInputs := mergeWorkflowInputs(refs.WorkflowInputs)
 
-	files := buildScaffoldFiles(refs, arch, usesArtifacts, allInputs)
+	files := buildScaffoldFiles(refs, arch, usesArtifacts, allInputs, opts.RunnerImageMap)
 	for _, f := range files {
 		path := filepath.Join(targetDir, filepath.FromSlash(f.path))
 		if err := writeScaffoldFile(path, f.content, opts.Force); err != nil {
@@ -111,7 +112,7 @@ type scaffoldFile struct {
 	content string
 }
 
-func buildScaffoldFiles(refs workflow.References, arch string, usesArtifacts bool, allInputs []string) []scaffoldFile {
+func buildScaffoldFiles(refs workflow.References, arch string, usesArtifacts bool, allInputs []string, runnerImageMapOverride map[string]string) []scaffoldFile {
 	files := []scaffoldFile{
 		{path: ".secrets.example", content: buildDotenvFile("Copy to .secrets and provide real values", withGitHubToken(refs.Secrets))},
 		{path: ".env.example", content: buildDotenvFile("Copy to .env and provide real values", refs.Env)},
@@ -127,7 +128,7 @@ func buildScaffoldFiles(refs workflow.References, arch string, usesArtifacts boo
 
 	files = append(files, scaffoldFile{
 		path:    ".actrc",
-		content: buildActrc(refs.Runners, refs.SelfHosted, arch, usesArtifacts, len(allInputs) > 0),
+		content: buildActrc(refs.Runners, refs.SelfHosted, arch, usesArtifacts, len(allInputs) > 0, runnerImageMapOverride),
 	})
 
 	return files
@@ -141,7 +142,7 @@ var runnerImageMap = map[string]string{
 	"ubuntu-20.04":  "catthehacker/ubuntu:act-20.04",
 }
 
-func buildActrc(runners []string, selfHosted [][]string, arch string, usesArtifacts bool, hasInputs bool) string {
+func buildActrc(runners []string, selfHosted [][]string, arch string, usesArtifacts bool, hasInputs bool, runnerImageMapOverride map[string]string) string {
 	var b strings.Builder
 	b.WriteString("--secret-file .secrets\n")
 	b.WriteString("--env-file .env\n")
@@ -151,8 +152,15 @@ func buildActrc(runners []string, selfHosted [][]string, arch string, usesArtifa
 		b.WriteString("--input-file .input\n")
 	}
 
+	runnerImageMapResolved := make(map[string]string, len(runnerImageMap)+len(runnerImageMapOverride))
+	for k, v := range runnerImageMap {
+		runnerImageMapResolved[k] = v
+	}
+	for k, v := range runnerImageMapOverride {
+		runnerImageMapResolved[k] = v
+	}
 	for _, r := range runners {
-		if img, ok := runnerImageMap[r]; ok {
+		if img, ok := runnerImageMapResolved[r]; ok {
 			fmt.Fprintf(&b, "-P %s=%s\n", r, img)
 		}
 	}

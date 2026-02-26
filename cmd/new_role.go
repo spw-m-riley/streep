@@ -46,10 +46,15 @@ func executeNewRole(args []string, stdout io.Writer, stderr io.Writer) error {
 	if len(positionalArgs) == 1 {
 		dir = positionalArgs[0]
 	}
+	cfg, err := loadStreepConfig(dir)
+	if err != nil {
+		return err
+	}
 
 	return scaffold.NewRole(scaffold.RoleOptions{
-		Dir:   dir,
-		Force: force,
-		Out:   stdout,
+		Dir:            dir,
+		Force:          force,
+		Out:            stdout,
+		RunnerImageMap: cfg.RunnerImages,
 	})
 }
