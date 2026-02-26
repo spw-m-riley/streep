@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/spw-m-riley/streep/compare/v1.2.0...v1.3.0) (2026-02-26)
+
+
+### Features
+
+* **cli:** improve local act command UX ([8479e20](https://github.com/spw-m-riley/streep/commit/8479e201b5838099a8f132080fb2f879f352546d))
+
+
+### Bug Fixes
+
+* **hook:** prevent partial writes during install ([16e84d6](https://github.com/spw-m-riley/streep/commit/16e84d6c21af26665c6492bd40a313a2afd4dd60))
+
 ## [1.2.0](https://github.com/spw-m-riley/streep/compare/v1.1.0...v1.2.0) (2026-02-25)
 
 
