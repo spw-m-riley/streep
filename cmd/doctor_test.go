@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -91,6 +92,42 @@ func TestDoctorReportsArtifactIssue(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "issue(s) found") {
 		t.Fatalf("expected issue summary, got:\n%s", out.String())
+	}
+}
+
+func TestDoctorJSONOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script test helper is unix-only")
+	}
+
+	dir := t.TempDir()
+	binDir := filepath.Join(dir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	setupFakeActAndDocker(t, binDir, false)
+
+	oldPath := os.Getenv("PATH")
+	if err := os.Setenv("PATH", binDir+":"+oldPath); err != nil {
+		t.Fatalf("setenv PATH: %v", err)
+	}
+	defer os.Setenv("PATH", oldPath) //nolint:errcheck
+
+	writeDoctorFixture(t, dir, true)
+
+	var out bytes.Buffer
+	if err := executeDoctor([]string{dir, "--json"}, &out, &bytes.Buffer{}); err != nil {
+		t.Fatalf("executeDoctor() error: %v", err)
+	}
+	var payload commandJSONResult
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("json unmarshal: %v\n%s", err, out.String())
+	}
+	if !payload.OK {
+		t.Fatalf("expected ok=true payload, got %+v", payload)
+	}
+	if !strings.Contains(payload.Output, "All checks passed.") {
+		t.Fatalf("expected wrapped doctor output, got %+v", payload)
 	}
 }
 

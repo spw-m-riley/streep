@@ -12,9 +12,11 @@ type Details struct {
 	Jobs    []string
 	Events  []string
 	Secrets []string
+	Env     []string
+	Vars    []string
 }
 
-// ParseDetails parses workflow YAML bytes and extracts jobs/events/secrets.
+// ParseDetails parses workflow YAML bytes and extracts jobs/events/secrets/env/vars.
 func ParseDetails(data []byte) (Details, error) {
 	var root yaml.Node
 	dec := yaml.NewDecoder(bytes.NewReader(data))
@@ -37,11 +39,19 @@ func ParseDetails(data []byte) (Details, error) {
 	})
 
 	secretsSet := map[string]struct{}{}
+	envSet := map[string]struct{}{}
+	varsSet := map[string]struct{}{}
 	var scalars []string
 	collectScalarValues(doc, &scalars)
 	for _, s := range scalars {
 		for _, m := range reSecrets.FindAllStringSubmatch(s, -1) {
 			secretsSet[m[1]] = struct{}{}
+		}
+		for _, m := range reEnv.FindAllStringSubmatch(s, -1) {
+			envSet[m[1]] = struct{}{}
+		}
+		for _, m := range reVars.FindAllStringSubmatch(s, -1) {
+			varsSet[m[1]] = struct{}{}
 		}
 	}
 
@@ -49,5 +59,7 @@ func ParseDetails(data []byte) (Details, error) {
 		Jobs:    mapKeys(jobsSet),
 		Events:  collectWorkflowEvents(doc),
 		Secrets: mapKeys(secretsSet),
+		Env:     mapKeys(envSet),
+		Vars:    mapKeys(varsSet),
 	}, nil
 }

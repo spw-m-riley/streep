@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -23,13 +24,22 @@ Checks:
   - .artifacts/ present when artifact actions are used
 
 Usage:
-  streep doctor [path]
+  streep doctor [path] [--json]
 
 If no path is given, the current directory is used.
 `
 
 func executeDoctor(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
+	args, jsonMode := splitJSONFlag(args)
+	if jsonMode {
+		var human bytes.Buffer
+		err := executeDoctor(args, &human, stderr)
+		if jsonErr := writeWrappedJSON(stdout, human.String(), err); jsonErr != nil {
+			return jsonErr
+		}
+		return err
+	}
 
 	for _, arg := range args {
 		if isHelp(arg) {

@@ -21,13 +21,14 @@ Shows:
   - warnings (self-hosted, large matrix, missing permissions, deprecated commands)
 
 Usage:
-  streep explain [path]
+  streep explain [path] [--json]
 
 If no path is given, the current directory is used.
 `
 
 func executeExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
+	args, jsonMode := splitJSONFlag(args)
 
 	for _, arg := range args {
 		if isHelp(arg) {
@@ -54,8 +55,43 @@ func executeExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	if len(overviews) == 0 {
+		if jsonMode {
+			return writeJSON(stdout, struct {
+				Directory string                      `json:"directory"`
+				Triggers  []string                    `json:"triggers"`
+				Workflows []workflow.WorkflowOverview `json:"workflows"`
+			}{
+				Directory: dir,
+				Triggers:  refs.Events,
+				Workflows: nil,
+			})
+		}
 		fmt.Fprintf(stdout, "No workflow files found in %s\n", workflowsDir)
 		return nil
+	}
+	if jsonMode {
+		warnings := collectExplainWarnings(overviews, refs)
+		return writeJSON(stdout, struct {
+			Directory            string                      `json:"directory"`
+			Triggers             []string                    `json:"triggers"`
+			RequiredSecrets      []string                    `json:"required_secrets"`
+			RequiredEnv          []string                    `json:"required_env"`
+			RequiredVars         []string                    `json:"required_vars"`
+			ExternalActions      []string                    `json:"external_actions"`
+			MatrixCombinationSum int                         `json:"matrix_combination_sum"`
+			Workflows            []workflow.WorkflowOverview `json:"workflows"`
+			Warnings             []string                    `json:"warnings"`
+		}{
+			Directory:            dir,
+			Triggers:             refs.Events,
+			RequiredSecrets:      refs.Secrets,
+			RequiredEnv:          refs.Env,
+			RequiredVars:         refs.Vars,
+			ExternalActions:      refs.UsesActions,
+			MatrixCombinationSum: refs.MatrixCount,
+			Workflows:            overviews,
+			Warnings:             warnings,
+		})
 	}
 
 	fmt.Fprintf(stdout, "Workflow explanation for %s\n\n", dir)

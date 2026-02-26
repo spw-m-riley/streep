@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,5 +132,23 @@ runs:
 	_ = executeLint([]string{dir}, &out, &bytes.Buffer{})
 	if !strings.Contains(out.String(), "composite-shell-safety") {
 		t.Fatalf("expected composite shell safety rule, got:\n%s", out.String())
+	}
+}
+
+func TestLintJSONOutput(t *testing.T) {
+	dir := t.TempDir()
+	var out bytes.Buffer
+	if err := executeLint([]string{dir, "--json"}, &out, &bytes.Buffer{}); err != nil {
+		t.Fatalf("executeLint() error: %v", err)
+	}
+	var payload commandJSONResult
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("json unmarshal: %v\n%s", err, out.String())
+	}
+	if !payload.OK {
+		t.Fatalf("expected ok=true payload, got %+v", payload)
+	}
+	if !strings.Contains(payload.Output, "No workflow files found") {
+		t.Fatalf("expected human output wrapped in json payload, got %+v", payload)
 	}
 }

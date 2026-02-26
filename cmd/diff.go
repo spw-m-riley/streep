@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -18,9 +19,11 @@ Reports workflow-level deltas for:
   - jobs
   - trigger events
   - required secrets
+  - required env vars
+  - required repository vars
 
 Usage:
-  streep diff [branch] [path]
+  streep diff [branch] [path] [--json]
 
 Defaults:
   branch = HEAD~1
@@ -29,6 +32,15 @@ Defaults:
 
 func executeDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
+	args, jsonMode := splitJSONFlag(args)
+	if jsonMode {
+		var human bytes.Buffer
+		err := executeDiff(args, &human, stderr)
+		if jsonErr := writeWrappedJSON(stdout, human.String(), err); jsonErr != nil {
+			return jsonErr
+		}
+		return err
+	}
 
 	for _, arg := range args {
 		if isHelp(arg) {
@@ -40,13 +52,20 @@ func executeDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("streep diff accepts at most two arguments: [branch] [path]")
 	}
 
-	branch := "HEAD~1"
 	dir := "."
-	if len(args) >= 1 {
-		branch = args[0]
-	}
 	if len(args) == 2 {
 		dir = args[1]
+	}
+	cfg, err := loadStreepConfig(dir)
+	if err != nil {
+		return err
+	}
+	branch := "HEAD~1"
+	if cfg.Defaults.DiffBase != "" {
+		branch = cfg.Defaults.DiffBase
+	}
+	if len(args) >= 1 {
+		branch = args[0]
 	}
 
 	if err := ensureGitRepo(dir); err != nil {
@@ -94,7 +113,9 @@ func executeDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 			addedJobs, removedJobs := setDiff(localDetails.Jobs, branchDetails.Jobs)
 			addedEvents, removedEvents := setDiff(localDetails.Events, branchDetails.Events)
 			addedSecrets, removedSecrets := setDiff(localDetails.Secrets, branchDetails.Secrets)
-			if len(addedJobs)+len(removedJobs)+len(addedEvents)+len(removedEvents)+len(addedSecrets)+len(removedSecrets) == 0 {
+			addedEnv, removedEnv := setDiff(localDetails.Env, branchDetails.Env)
+			addedVars, removedVars := setDiff(localDetails.Vars, branchDetails.Vars)
+			if len(addedJobs)+len(removedJobs)+len(addedEvents)+len(removedEvents)+len(addedSecrets)+len(removedSecrets)+len(addedEnv)+len(removedEnv)+len(addedVars)+len(removedVars) == 0 {
 				continue
 			}
 			changes++
@@ -102,6 +123,8 @@ func executeDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 			anyChange = printDiffLine(stdout, "jobs", addedJobs, removedJobs) || anyChange
 			anyChange = printDiffLine(stdout, "events", addedEvents, removedEvents) || anyChange
 			anyChange = printDiffLine(stdout, "secrets", addedSecrets, removedSecrets) || anyChange
+			anyChange = printDiffLine(stdout, "env", addedEnv, removedEnv) || anyChange
+			anyChange = printDiffLine(stdout, "vars", addedVars, removedVars) || anyChange
 			if !anyChange {
 				fmt.Fprintln(stdout, "  (content changed, but no tracked deltas)")
 			}

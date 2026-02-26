@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +15,7 @@ Reads the .example files as the required-key manifest and checks the real
 files (.secrets, .env, .vars, .input) for missing files or empty values.
 
 Usage:
-  streep check [path]
+  streep check [path] [--json]
 
 If no path is given, the current directory is used.
 `
@@ -34,6 +35,16 @@ var checkFiles = []checkFile{
 }
 
 func executeCheck(args []string, stdout io.Writer, stderr io.Writer) error {
+	args, jsonMode := splitJSONFlag(args)
+	if jsonMode {
+		var human bytes.Buffer
+		err := executeCheck(args, &human, stderr)
+		if jsonErr := writeWrappedJSON(stdout, human.String(), err); jsonErr != nil {
+			return jsonErr
+		}
+		return err
+	}
+
 	for _, arg := range args {
 		if isHelp(arg) {
 			_, err := io.WriteString(stdout, checkUsage)

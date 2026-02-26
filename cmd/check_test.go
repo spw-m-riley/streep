@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,6 +83,28 @@ func TestCheckWarnsForNonClassicPAT(t *testing.T) {
 	_ = executeCheck([]string{dir}, &out, &bytes.Buffer{})
 	if !strings.Contains(out.String(), "ghp_") {
 		t.Errorf("expected classic PAT warning, got:\n%s", out.String())
+	}
+}
+
+func TestCheckJSONOutput(t *testing.T) {
+	dir := t.TempDir()
+	writeCheckFile(t, filepath.Join(dir, ".secrets.example"), "GITHUB_TOKEN=\n")
+
+	var out bytes.Buffer
+	err := executeCheck([]string{dir, "--json"}, &out, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("expected check failure error in json mode, got nil")
+	}
+
+	var payload commandJSONResult
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("json unmarshal: %v\n%s", err, out.String())
+	}
+	if payload.OK {
+		t.Fatalf("expected ok=false payload, got %+v", payload)
+	}
+	if payload.Error == "" {
+		t.Fatalf("expected error text in payload, got %+v", payload)
 	}
 }
 

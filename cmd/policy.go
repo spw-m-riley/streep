@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -11,7 +12,7 @@ import (
 const policyUsage = `Run security policy checks against workflow files.
 
 Usage:
-  streep policy check [path]
+  streep policy check [path] [--json]
 
 Rules:
   - permissions: write-all
@@ -24,6 +25,15 @@ Config:
 
 func executePolicy(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
+	args, jsonMode := splitJSONFlag(args)
+	if jsonMode {
+		var human bytes.Buffer
+		err := executePolicy(args, &human, stderr)
+		if jsonErr := writeWrappedJSON(stdout, human.String(), err); jsonErr != nil {
+			return jsonErr
+		}
+		return err
+	}
 
 	if len(args) == 0 || isHelp(args[0]) {
 		_, err := io.WriteString(stdout, policyUsage)
@@ -39,6 +49,16 @@ func executePolicy(args []string, stdout io.Writer, stderr io.Writer) error {
 }
 
 func executePolicyCheck(args []string, stdout io.Writer) error {
+	args, jsonMode := splitJSONFlag(args)
+	if jsonMode {
+		var human bytes.Buffer
+		err := executePolicyCheck(args, &human)
+		if jsonErr := writeWrappedJSON(stdout, human.String(), err); jsonErr != nil {
+			return jsonErr
+		}
+		return err
+	}
+
 	for _, arg := range args {
 		if isHelp(arg) {
 			_, err := io.WriteString(stdout, policyUsage)

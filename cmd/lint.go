@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -20,14 +21,24 @@ Rules:
   - undeclared workflow_dispatch inputs referenced in expressions
 
 Usage:
-  streep lint [path] [--fix]
+  streep lint [path] [--fix] [--json]
 
 Flags:
   --fix    Apply safe fixes for deprecated action versions
+  --json   Emit machine-readable JSON output
 `
 
 func executeLint(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
+	args, jsonMode := splitJSONFlag(args)
+	if jsonMode {
+		var human bytes.Buffer
+		err := executeLint(args, &human, stderr)
+		if jsonErr := writeWrappedJSON(stdout, human.String(), err); jsonErr != nil {
+			return jsonErr
+		}
+		return err
+	}
 
 	fix := false
 	positional := make([]string, 0, 1)
