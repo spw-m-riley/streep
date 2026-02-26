@@ -34,3 +34,10 @@ func TestRehearsWhenNoActrc(t *testing.T) {
 		t.Errorf("expected .actrc not found message, got: %q", out.String())
 	}
 }
+
+func TestRehearsUnknownFlagReturnsError(t *testing.T) {
+	var out bytes.Buffer
+	if err := executeRehearse([]string{"--unknown"}, &out, &bytes.Buffer{}); err == nil {
+		t.Fatal("expected error for unknown flag, got nil")
+	}
+}

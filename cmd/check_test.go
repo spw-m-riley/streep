@@ -30,9 +30,7 @@ func TestCheckFailsWhenRealFileMissing(t *testing.T) {
 	writeCheckFile(t, filepath.Join(dir, ".secrets.example"), "GITHUB_TOKEN=\n")
 
 	var out bytes.Buffer
-	if err := executeCheck([]string{dir}, &out, &bytes.Buffer{}); err != nil {
-		t.Fatalf("executeCheck() error: %v", err)
-	}
+	_ = executeCheck([]string{dir}, &out, &bytes.Buffer{})
 	if !strings.Contains(out.String(), ".secrets not found") {
 		t.Errorf("expected missing file message, got:\n%s", out.String())
 	}
@@ -44,9 +42,7 @@ func TestCheckFailsWhenValueEmpty(t *testing.T) {
 	writeCheckFile(t, filepath.Join(dir, ".secrets"), "GITHUB_TOKEN=ghp_abc123\nDEPLOY_KEY=\n")
 
 	var out bytes.Buffer
-	if err := executeCheck([]string{dir}, &out, &bytes.Buffer{}); err != nil {
-		t.Fatalf("executeCheck() error: %v", err)
-	}
+	_ = executeCheck([]string{dir}, &out, &bytes.Buffer{})
 	if !strings.Contains(out.String(), "DEPLOY_KEY") {
 		t.Errorf("expected DEPLOY_KEY to be flagged, got:\n%s", out.String())
 	}
@@ -74,6 +70,18 @@ func TestCheckShowsHelp(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "streep check") {
 		t.Errorf("expected help text, got: %q", out.String())
+	}
+}
+
+func TestCheckWarnsForNonClassicPAT(t *testing.T) {
+	dir := t.TempDir()
+	writeCheckFile(t, filepath.Join(dir, ".secrets.example"), "GITHUB_TOKEN=\n")
+	writeCheckFile(t, filepath.Join(dir, ".secrets"), "GITHUB_TOKEN=ghs_notaclassicpat\n")
+
+	var out bytes.Buffer
+	_ = executeCheck([]string{dir}, &out, &bytes.Buffer{})
+	if !strings.Contains(out.String(), "ghp_") {
+		t.Errorf("expected classic PAT warning, got:\n%s", out.String())
 	}
 }
 

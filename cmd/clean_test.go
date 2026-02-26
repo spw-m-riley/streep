@@ -96,3 +96,10 @@ func TestCleanNothingToClean(t *testing.T) {
 		t.Fatalf("expected nothing-to-clean output, got:\n%s", out.String())
 	}
 }
+
+func TestCleanUnknownFlagReturnsError(t *testing.T) {
+	var out bytes.Buffer
+	if err := executeClean([]string{"--unknown"}, &out, &bytes.Buffer{}); err == nil {
+		t.Fatal("expected error for unknown flag, got nil")
+	}
+}

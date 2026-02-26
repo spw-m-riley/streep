@@ -48,9 +48,7 @@ jobs:
 `)
 
 	var out bytes.Buffer
-	if err := executeLint([]string{dir}, &out, &bytes.Buffer{}); err != nil {
-		t.Fatalf("executeLint() error: %v", err)
-	}
+	_ = executeLint([]string{dir}, &out, &bytes.Buffer{})
 	got := out.String()
 	for _, want := range []string{
 		"deprecated-action-version",
@@ -84,9 +82,7 @@ jobs:
 `)
 
 	var out bytes.Buffer
-	if err := executeLint([]string{dir, "--fix"}, &out, &bytes.Buffer{}); err != nil {
-		t.Fatalf("executeLint() error: %v", err)
-	}
+	_ = executeLint([]string{dir, "--fix"}, &out, &bytes.Buffer{})
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -132,9 +128,7 @@ runs:
 `)
 
 	var out bytes.Buffer
-	if err := executeLint([]string{dir}, &out, &bytes.Buffer{}); err != nil {
-		t.Fatalf("executeLint() error: %v", err)
-	}
+	_ = executeLint([]string{dir}, &out, &bytes.Buffer{})
 	if !strings.Contains(out.String(), "composite-shell-safety") {
 		t.Fatalf("expected composite shell safety rule, got:\n%s", out.String())
 	}

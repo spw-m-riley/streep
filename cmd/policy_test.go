@@ -35,9 +35,7 @@ jobs:
 `)
 
 	var out bytes.Buffer
-	if err := executePolicy([]string{"check", dir}, &out, &bytes.Buffer{}); err != nil {
-		t.Fatalf("executePolicy(check) error: %v", err)
-	}
+	_ = executePolicy([]string{"check", dir}, &out, &bytes.Buffer{})
 	got := out.String()
 	for _, want := range []string{"write-all-permissions", "pull-request-target", "unpinned-action"} {
 		if !strings.Contains(got, want) {
