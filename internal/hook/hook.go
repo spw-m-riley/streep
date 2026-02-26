@@ -34,15 +34,35 @@ func Install(repoDir string) (int, error) {
 		return 0, fmt.Errorf("failed to create hooks directory: %w", err)
 	}
 
+	type hookEntry struct {
+		name   string
+		script string
+	}
+	hooks := []hookEntry{
+		{"pre-commit", preCommitScript},
+		{"pre-push", prePushScript},
+	}
+
+	// Validate all target hooks first so we don't partially write on conflicts.
+	for _, h := range hooks {
+		path := filepath.Join(hooksDir, h.name)
+		existing, err := os.ReadFile(path)
+		if err == nil && !strings.Contains(string(existing), managedMarker) {
+			return 0, fmt.Errorf("existing %s hook is not streep-managed; remove it manually before installing", h.name)
+		}
+		if err != nil && !os.IsNotExist(err) {
+			return 0, fmt.Errorf("failed to read %s: %w", h.name, err)
+		}
+	}
+
 	written := 0
-	if err := writeHook(filepath.Join(hooksDir, "pre-commit"), preCommitScript); err != nil {
-		return written, err
+	for _, h := range hooks {
+		path := filepath.Join(hooksDir, h.name)
+		if err := writeHook(path, h.script); err != nil {
+			return written, err
+		}
+		written++
 	}
-	written++
-	if err := writeHook(filepath.Join(hooksDir, "pre-push"), prePushScript); err != nil {
-		return written, err
-	}
-	written++
 
 	return written, nil
 }

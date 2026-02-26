@@ -40,13 +40,89 @@ func TestInstallWritesHooks(t *testing.T) {
 	}
 }
 
+func TestInstallOverwritesManagedHook(t *testing.T) {
+	dir := t.TempDir()
+	hooksDir := filepath.Join(dir, ".git", "hooks")
+	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
+		t.Fatalf("mkdir hooks: %v", err)
+	}
+	// Write an old managed hook — Install should overwrite it cleanly.
+	old := "#!/bin/sh\n# streep-managed-hook\necho old\n"
+	if err := os.WriteFile(filepath.Join(hooksDir, "pre-commit"), []byte(old), 0o755); err != nil {
+		t.Fatalf("write old hook: %v", err)
+	}
+
+	n, err := Install(dir)
+	if err != nil {
+		t.Fatalf("Install() error: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("expected 2 hooks written, got %d", n)
+	}
+	data, err := os.ReadFile(filepath.Join(hooksDir, "pre-commit"))
+	if err != nil {
+		t.Fatalf("read hook: %v", err)
+	}
+	if strings.Contains(string(data), "echo old") {
+		t.Errorf("expected old hook content to be replaced")
+	}
+}
+
+func TestInstallRefusesUnmanagedHook(t *testing.T) {
+	dir := t.TempDir()
+	hooksDir := filepath.Join(dir, ".git", "hooks")
+	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
+		t.Fatalf("mkdir hooks: %v", err)
+	}
+	// Write an unmanaged hook (no marker).
+	unmanaged := "#!/bin/sh\necho custom\n"
+	if err := os.WriteFile(filepath.Join(hooksDir, "pre-commit"), []byte(unmanaged), 0o755); err != nil {
+		t.Fatalf("write unmanaged hook: %v", err)
+	}
+
+	_, err := Install(dir)
+	if err == nil {
+		t.Fatal("expected error when unmanaged hook present, got nil")
+	}
+}
+
+func TestInstallDoesNotPartiallyWriteWhenLaterHookIsUnmanaged(t *testing.T) {
+	dir := t.TempDir()
+	hooksDir := filepath.Join(dir, ".git", "hooks")
+	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
+		t.Fatalf("mkdir hooks: %v", err)
+	}
+	unmanaged := "#!/bin/sh\necho custom\n"
+	if err := os.WriteFile(filepath.Join(hooksDir, "pre-push"), []byte(unmanaged), 0o755); err != nil {
+		t.Fatalf("write unmanaged pre-push hook: %v", err)
+	}
+
+	written, err := Install(dir)
+	if err == nil {
+		t.Fatal("expected error when unmanaged hook present, got nil")
+	}
+	if written != 0 {
+		t.Fatalf("expected zero hooks written, got %d", written)
+	}
+
+	if _, err := os.Stat(filepath.Join(hooksDir, "pre-commit")); !os.IsNotExist(err) {
+		t.Fatalf("expected pre-commit to remain absent, stat err: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(hooksDir, "pre-push"))
+	if err != nil {
+		t.Fatalf("read pre-push: %v", err)
+	}
+	if !strings.Contains(string(got), "echo custom") {
+		t.Fatalf("expected unmanaged pre-push hook to remain unchanged, got: %s", got)
+	}
+}
+
 func TestUninstallRemovesManagedHooksOnly(t *testing.T) {
 	dir := t.TempDir()
 	hooksDir := filepath.Join(dir, ".git", "hooks")
 	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
 		t.Fatalf("mkdir hooks: %v", err)
 	}
-
 	if err := os.WriteFile(filepath.Join(hooksDir, "pre-commit"), []byte(preCommitScript), 0o755); err != nil {
 		t.Fatalf("write pre-commit: %v", err)
 	}
