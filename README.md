@@ -98,6 +98,7 @@ Wraps `act -n [event]` — a dry-run that resolves the workflow plan without spi
 streep rehearse                    # dry-run the push event
 streep rehearse pull_request
 streep rehearse workflow_dispatch
+streep rehearse -- --verbose       # pass extra flags directly to act
 ```
 
 If `.actrc` is missing, streep will suggest running `streep new role` first. A performer needs a script before they can rehearse.
@@ -115,6 +116,7 @@ streep perform                                             # run the default pus
 streep perform pull_request                                # run pull_request
 streep perform push --workflow .github/workflows/ci.yml   # target a specific workflow
 streep perform pull_request --job test                     # target a specific job
+streep perform -- --verbose                                # pass extra flags directly to act
 ```
 
 **Flags:**
@@ -214,10 +216,12 @@ streep lint --fix         # report issues and auto-bump deprecated action versio
 > A touring production can't depend on the venue having the right props. You pack everything you need. `streep bundle actions` downloads every remote action your workflows reference and locks them to an exact commit SHA, so your runs work offline and deterministically.
 
 Downloads all `uses:` action dependencies into `.act/bundle/` and writes `.act/bundle.lock` with the resolved commit SHAs.
+You can also verify drift against current workflow refs.
 
 ```bash
 streep bundle actions
 streep bundle actions /path/to/repo
+streep bundle verify
 ```
 
 ---
@@ -250,6 +254,8 @@ Reports workflow-level deltas against a git revision (default: `HEAD~1`):
 - Added or removed jobs
 - Added or removed trigger events
 - Added or removed required secrets
+- Added or removed required env vars
+- Added or removed required repository vars
 
 ```bash
 streep diff                        # compare to HEAD~1
@@ -293,6 +299,22 @@ rules:
   write_all_permissions: true
   pull_request_target: true
   unpinned_actions: true
+```
+
+---
+
+### `streep audit` — *Safety Sweep*
+
+> Before opening night, somebody walks the stage and checks every cable and latch. `streep audit` does that for local secrets hygiene.
+
+Checks:
+
+- restrictive file permissions for `.secrets`, `.env`, `.vars`, `.input` (when present)
+- `.gitignore` entries for those same sensitive files
+
+```bash
+streep audit
+streep audit /path/to/repo
 ```
 
 ---

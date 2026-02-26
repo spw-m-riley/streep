@@ -68,6 +68,7 @@ func TestExecuteTopLevelCommandsRegistered(t *testing.T) {
 		{args: []string{"diff", "--help"}, want: "streep diff"},
 		{args: []string{"fingerprint", "--help"}, want: "streep fingerprint"},
 		{args: []string{"policy", "--help"}, want: "streep policy"},
+		{args: []string{"audit", "--help"}, want: "streep audit"},
 		{args: []string{"diagnose", "--help"}, want: "streep diagnose"},
 	}
 

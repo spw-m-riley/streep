@@ -31,7 +31,7 @@ _streep() {
     local cur prev commands
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    commands="new check rehearse perform clean doctor edit explain lint bundle hook diff fingerprint policy diagnose version update completion help"
+    commands="new check rehearse perform clean doctor edit explain lint bundle hook diff fingerprint policy audit diagnose version update completion help"
 
     if [[ ${COMP_CWORD} -eq 1 ]]; then
         COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )
@@ -71,6 +71,7 @@ _streep() {
         'diff:Show workflow changes vs a git revision'
         'fingerprint:Generate or compare run fingerprints'
         'policy:Run workflow security policy checks'
+        'audit:Audit local safety settings'
         'diagnose:Analyze run logs and suggest fixes'
         'version:Print the version'
         'update:Check for a newer version'
@@ -91,7 +92,7 @@ _streep "$@"
 `
 
 const fishCompletion = `# streep fish completion
-set -l commands new check rehearse perform clean doctor edit explain lint bundle hook diff fingerprint policy diagnose version update completion help
+set -l commands new check rehearse perform clean doctor edit explain lint bundle hook diff fingerprint policy audit diagnose version update completion help
 
 complete -c streep -f
 complete -c streep -n "__fish_use_subcommand" -a new          -d "Create new streep resources"
@@ -108,6 +109,7 @@ complete -c streep -n "__fish_use_subcommand" -a hook         -d "Manage git hoo
 complete -c streep -n "__fish_use_subcommand" -a diff         -d "Show workflow changes vs a git revision"
 complete -c streep -n "__fish_use_subcommand" -a fingerprint  -d "Generate or compare run fingerprints"
 complete -c streep -n "__fish_use_subcommand" -a policy       -d "Run workflow security policy checks"
+complete -c streep -n "__fish_use_subcommand" -a audit        -d "Audit local safety settings"
 complete -c streep -n "__fish_use_subcommand" -a diagnose     -d "Analyze run logs and suggest fixes"
 complete -c streep -n "__fish_use_subcommand" -a version      -d "Print the version"
 complete -c streep -n "__fish_use_subcommand" -a update       -d "Check for a newer version"

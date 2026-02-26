@@ -26,6 +26,7 @@ Commands:
   diff        Show workflow changes vs a git revision
   fingerprint Generate or compare run fingerprints
   policy      Run workflow security policy checks
+  audit       Audit local safety settings
   diagnose    Analyze run logs and suggest fixes
   version     Print the version
   update      Check for a newer version
@@ -83,6 +84,8 @@ func Execute(args []string, stdout io.Writer, stderr io.Writer) error {
 		return executeFingerprint(args[1:], stdout, stderr)
 	case "policy":
 		return executePolicy(args[1:], stdout, stderr)
+	case "audit":
+		return executeAudit(args[1:], stdout, stderr)
 	case "diagnose":
 		return executeDiagnose(args[1:], stdout, stderr)
 	case "version":
