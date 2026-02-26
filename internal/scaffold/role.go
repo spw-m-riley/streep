@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"streep/internal/workflow"
@@ -53,7 +54,12 @@ func NewRole(opts RoleOptions) error {
 		arch = runtime.GOARCH
 	}
 
-	usesArtifacts := detectsArtifacts(refs.UsesActions)
+	out := opts.Out
+	if out == nil {
+		out = io.Discard
+	}
+
+	usesArtifacts := workflow.DetectsArtifactActions(refs.UsesActions)
 	allInputs := mergeWorkflowInputs(refs.WorkflowInputs)
 
 	files := buildScaffoldFiles(refs, arch, usesArtifacts, allInputs)
@@ -62,6 +68,7 @@ func NewRole(opts RoleOptions) error {
 		if err := writeScaffoldFile(path, f.content, opts.Force); err != nil {
 			return err
 		}
+		fmt.Fprintf(out, "  wrote %s\n", f.path)
 	}
 
 	if usesArtifacts {
@@ -73,6 +80,7 @@ func NewRole(opts RoleOptions) error {
 		if err := writeScaffoldFile(gitkeep, "", opts.Force); err != nil && !os.IsExist(err) {
 			return err
 		}
+		fmt.Fprintf(out, "  wrote .artifacts/\n")
 	}
 
 	gitignorePath := filepath.Join(targetDir, ".gitignore")
@@ -89,11 +97,9 @@ func NewRole(opts RoleOptions) error {
 		if err := writeEventFiles(targetDir, refs.Events, opts.Force); err != nil {
 			return err
 		}
-	}
-
-	out := opts.Out
-	if out == nil {
-		out = io.Discard
+		for _, ev := range refs.Events {
+			fmt.Fprintf(out, "  wrote .act/events/%s.json\n", ev)
+		}
 	}
 
 	printNextSteps(out, targetDir, allInputs, refs)
@@ -167,15 +173,6 @@ func buildActrc(runners []string, selfHosted [][]string, arch string, usesArtifa
 	return b.String()
 }
 
-func detectsArtifacts(actions []string) bool {
-	for _, a := range actions {
-		if strings.Contains(a, "upload-artifact") || strings.Contains(a, "download-artifact") {
-			return true
-		}
-	}
-	return false
-}
-
 // mergeWorkflowInputs flattens all workflow_dispatch input names into a sorted deduped list.
 func mergeWorkflowInputs(m map[string][]string) []string {
 	seen := map[string]struct{}{}
@@ -188,17 +185,8 @@ func mergeWorkflowInputs(m map[string][]string) []string {
 	for k := range seen {
 		result = append(result, k)
 	}
-	sortStrings(result)
+	sort.Strings(result)
 	return result
-}
-
-func sortStrings(s []string) {
-	// stdlib sort via import would create circular; use simple sort inline
-	for i := 1; i < len(s); i++ {
-		for j := i; j > 0 && s[j] < s[j-1]; j-- {
-			s[j], s[j-1] = s[j-1], s[j]
-		}
-	}
 }
 
 // withGitHubToken ensures GITHUB_TOKEN is always the first entry.

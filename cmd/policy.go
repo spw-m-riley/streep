@@ -66,5 +66,5 @@ func executePolicyCheck(args []string, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "✗ %s: %s (%s)\n", f.File, f.Message, f.Rule)
 	}
 	fmt.Fprintf(stdout, "\nFound %d policy issue(s).\n", len(findings))
-	return nil
+	return fmt.Errorf("policy check failed")
 }

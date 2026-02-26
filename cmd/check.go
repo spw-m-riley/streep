@@ -35,7 +35,7 @@ var checkFiles = []checkFile{
 
 func executeCheck(args []string, stdout io.Writer, stderr io.Writer) error {
 	for _, arg := range args {
-		if arg == "-h" || arg == "--help" || arg == "help" {
+		if isHelp(arg) {
 			_, err := io.WriteString(stdout, checkUsage)
 			return err
 		}
@@ -109,11 +109,10 @@ func executeCheck(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	if allPassed {
 		fmt.Fprintln(stdout, "\nAll checks passed — you're ready to run act.")
-	} else {
-		fmt.Fprintln(stdout, "\nSome checks failed — fill in the missing values before running act.")
+		return nil
 	}
-
-	return nil
+	fmt.Fprintln(stdout, "\nSome checks failed — fill in the missing values before running act.")
+	return fmt.Errorf("check failed")
 }
 
 // readDotenvKeys returns all key names from a dotenv file (ignoring comments and blank lines).

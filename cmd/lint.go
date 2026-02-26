@@ -95,5 +95,9 @@ func executeLint(args []string, stdout io.Writer, stderr io.Writer) error {
 	if fix {
 		fmt.Fprintf(stdout, "Applied %d action version fix(es) across %d file(s).\n", result.FixedActions, result.ChangedFiles)
 	}
+
+	if len(result.Issues) > 0 {
+		return fmt.Errorf("lint failed")
+	}
 	return nil
 }

@@ -29,8 +29,9 @@ var (
 
 // Options configures action bundling.
 type Options struct {
-	RepoDir string
-	Token   string
+	RepoDir  string
+	Token    string
+	Progress io.Writer // optional; receives per-action progress lines
 }
 
 // Entry describes one bundled action.
@@ -68,6 +69,9 @@ func BundleActions(opts Options) (Result, error) {
 
 	entries := make([]Entry, 0, len(actions))
 	for _, a := range actions {
+		if opts.Progress != nil {
+			fmt.Fprintf(opts.Progress, "Resolving %s…\n", a.Ref)
+		}
 		sha, err := resolveSHA(a.Owner, a.Repo, a.RequestedRef, token)
 		if err != nil {
 			return Result{}, fmt.Errorf("resolve %s: %w", a.Ref, err)
@@ -82,6 +86,9 @@ func BundleActions(opts Options) (Result, error) {
 			return Result{}, fmt.Errorf("create bundle dir %s: %w", destDir, err)
 		}
 
+		if opts.Progress != nil {
+			fmt.Fprintf(opts.Progress, "Downloading %s@%s…\n", a.Ref, sha[:7])
+		}
 		if err := downloadAndExtract(a.Owner, a.Repo, sha, destDir, token); err != nil {
 			return Result{}, fmt.Errorf("download %s: %w", a.Ref, err)
 		}

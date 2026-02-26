@@ -59,8 +59,8 @@ func executeClean(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("target path %q is not a directory", dir)
 	}
 
-	fileTargets := []string{".secrets", ".env", ".vars", ".input", ".actrc"}
-	dirTargets := []string{".artifacts", filepath.Join(".act", "cache")}
+	fileTargets := []string{".secrets", ".env", ".vars", ".input", ".actrc", filepath.Join(".act", "run-fingerprint")}
+	dirTargets := []string{".artifacts", filepath.Join(".act", "cache"), filepath.Join(".act", "events")}
 	var existing []string
 
 	for _, rel := range fileTargets {

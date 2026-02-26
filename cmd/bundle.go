@@ -59,7 +59,7 @@ func executeBundleActions(args []string, stdout io.Writer, stderr io.Writer) err
 		return fmt.Errorf("streep bundle actions accepts at most one path argument")
 	}
 
-	result, err := bundle.BundleActions(bundle.Options{RepoDir: dir})
+	result, err := bundle.BundleActions(bundle.Options{RepoDir: dir, Progress: stdout})
 	if err != nil {
 		return err
 	}

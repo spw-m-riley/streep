@@ -11,27 +11,38 @@ import (
 const diagnoseUsage = `Analyze an act run log and suggest likely fixes.
 
 Usage:
-  streep diagnose <run-log>
+  streep diagnose [run-log]
 
-Example:
+Reads from the given file, or from stdin if no file is provided.
+
+Examples:
   streep diagnose .act/latest.log
+  act 2>&1 | streep diagnose
 `
 
 func executeDiagnose(args []string, stdout io.Writer, stderr io.Writer) error {
 	_ = stderr
 
-	if len(args) == 0 || isHelp(args[0]) {
+	if len(args) > 0 && isHelp(args[0]) {
 		_, err := io.WriteString(stdout, diagnoseUsage)
 		return err
 	}
-	if len(args) != 1 {
-		return fmt.Errorf("usage: streep diagnose <run-log>")
+	if len(args) > 1 {
+		return fmt.Errorf("usage: streep diagnose [run-log]")
 	}
 
-	logPath := args[0]
-	content, err := os.ReadFile(logPath)
-	if err != nil {
-		return fmt.Errorf("failed to read log %s: %w", logPath, err)
+	var content []byte
+	var err error
+	if len(args) == 1 {
+		content, err = os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("failed to read log %s: %w", args[0], err)
+		}
+	} else {
+		content, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read stdin: %w", err)
+		}
 	}
 
 	findings := diagnose.AnalyzeLog(string(content))

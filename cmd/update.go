@@ -46,7 +46,9 @@ func executeUpdate(_ []string, stdout io.Writer, _ io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "A new version of streep is available: %s (you have %s)\n", latest, Version)
-	fmt.Fprintf(stdout, "Upgrade: brew upgrade --cask streep\n")
+	fmt.Fprintf(stdout, "Upgrade:\n")
+	fmt.Fprintf(stdout, "  Homebrew:   brew upgrade streep\n")
+	fmt.Fprintf(stdout, "  go install: go install github.com/spw-m-riley/streep@latest\n")
 	fmt.Fprintf(stdout, "Release notes: %s\n", release.HTMLURL)
 	return nil
 }
