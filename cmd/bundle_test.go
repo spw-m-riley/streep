@@ -33,3 +33,22 @@ func TestBundleActionsNoRemoteActions(t *testing.T) {
 		t.Fatalf("expected no-actions output, got:\n%s", out.String())
 	}
 }
+
+func TestBundleVerifyShowsHelp(t *testing.T) {
+	var out bytes.Buffer
+	if err := executeBundle([]string{"verify", "--help"}, &out, &bytes.Buffer{}); err != nil {
+		t.Fatalf("executeBundle() error: %v", err)
+	}
+	if !strings.Contains(out.String(), "streep bundle verify") {
+		t.Fatalf("expected verify help output, got:\n%s", out.String())
+	}
+}
+
+func TestBundleVerifyFailsWhenLockMissing(t *testing.T) {
+	dir := t.TempDir()
+	var out bytes.Buffer
+	err := executeBundleVerify([]string{dir}, &out, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("expected error when lock file is missing")
+	}
+}

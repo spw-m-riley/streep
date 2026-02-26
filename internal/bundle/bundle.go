@@ -21,17 +21,23 @@ import (
 )
 
 var (
-	shaPattern        = regexp.MustCompile(`^[a-f0-9]{40}$`)
-	githubAPIBaseURL  = "https://api.github.com"
-	codeloadBaseURL   = "https://codeload.github.com"
-	defaultHTTPClient = &http.Client{Timeout: 30 * time.Second}
+	shaPattern                   = regexp.MustCompile(`^[a-f0-9]{40}$`)
+	githubAPIBaseURL             = "https://api.github.com"
+	codeloadBaseURL              = "https://codeload.github.com"
+	defaultHTTPClient HTTPClient = &http.Client{Timeout: 30 * time.Second}
 )
+
+// HTTPClient is used for GitHub API and archive download calls; replaceable in tests.
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
 
 // Options configures action bundling.
 type Options struct {
-	RepoDir  string
-	Token    string
-	Progress io.Writer // optional; receives per-action progress lines
+	RepoDir    string
+	Token      string
+	Progress   io.Writer  // optional; receives per-action progress lines
+	HTTPClient HTTPClient // optional; defaults to package client
 }
 
 // Entry describes one bundled action.
@@ -48,6 +54,25 @@ type Result struct {
 	LockPath string
 }
 
+// VerifyDrift describes a lock entry whose resolved SHA changed.
+type VerifyDrift struct {
+	Ref         string
+	LockedSHA   string
+	ResolvedSHA string
+}
+
+// VerifyResult summarizes drift between workflow action refs and bundle.lock.
+type VerifyResult struct {
+	Missing []string
+	Extra   []string
+	Stale   []VerifyDrift
+}
+
+// IsClean reports whether the lock file matches current workflow refs.
+func (r VerifyResult) IsClean() bool {
+	return len(r.Missing) == 0 && len(r.Extra) == 0 && len(r.Stale) == 0
+}
+
 // BundleActions downloads and locks all remote actions referenced by workflow files.
 func BundleActions(opts Options) (Result, error) {
 	repoDir := opts.RepoDir
@@ -57,6 +82,10 @@ func BundleActions(opts Options) (Result, error) {
 	token := strings.TrimSpace(opts.Token)
 	if token == "" {
 		token = strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
+	}
+	client := opts.HTTPClient
+	if client == nil {
+		client = defaultHTTPClient
 	}
 
 	refs, err := workflow.ScanDir(filepath.Join(repoDir, ".github", "workflows"))
@@ -72,7 +101,7 @@ func BundleActions(opts Options) (Result, error) {
 		if opts.Progress != nil {
 			fmt.Fprintf(opts.Progress, "Resolving %s…\n", a.Ref)
 		}
-		sha, err := resolveSHA(a.Owner, a.Repo, a.RequestedRef, token)
+		sha, err := resolveSHA(client, a.Owner, a.Repo, a.RequestedRef, token)
 		if err != nil {
 			return Result{}, fmt.Errorf("resolve %s: %w", a.Ref, err)
 		}
@@ -89,7 +118,7 @@ func BundleActions(opts Options) (Result, error) {
 		if opts.Progress != nil {
 			fmt.Fprintf(opts.Progress, "Downloading %s@%s…\n", a.Ref, sha[:7])
 		}
-		if err := downloadAndExtract(a.Owner, a.Repo, sha, destDir, token); err != nil {
+		if err := downloadAndExtract(client, a.Owner, a.Repo, sha, destDir, token); err != nil {
 			return Result{}, fmt.Errorf("download %s: %w", a.Ref, err)
 		}
 
@@ -109,6 +138,81 @@ func BundleActions(opts Options) (Result, error) {
 		Entries:  entries,
 		LockPath: lockPath,
 	}, nil
+}
+
+// VerifyLock checks whether bundle.lock is in sync with workflow action refs.
+func VerifyLock(opts Options) (VerifyResult, error) {
+	repoDir := opts.RepoDir
+	if repoDir == "" {
+		repoDir = "."
+	}
+	token := strings.TrimSpace(opts.Token)
+	if token == "" {
+		token = strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
+	}
+	client := opts.HTTPClient
+	if client == nil {
+		client = defaultHTTPClient
+	}
+
+	refs, err := workflow.ScanDir(filepath.Join(repoDir, ".github", "workflows"))
+	if err != nil {
+		return VerifyResult{}, fmt.Errorf("failed to scan workflows: %w", err)
+	}
+	actions := collectRemoteActions(refs.UsesActions)
+
+	lockPath := filepath.Join(repoDir, ".act", "bundle.lock")
+	data, err := os.ReadFile(lockPath)
+	if err != nil {
+		return VerifyResult{}, fmt.Errorf("read lock file: %w", err)
+	}
+
+	var payload struct {
+		Actions []Entry `yaml:"actions"`
+	}
+	if err := yaml.Unmarshal(data, &payload); err != nil {
+		return VerifyResult{}, fmt.Errorf("parse lock file: %w", err)
+	}
+
+	lockByRef := make(map[string]string, len(payload.Actions))
+	for _, e := range payload.Actions {
+		lockByRef[e.Ref] = e.SHA
+	}
+
+	expectedByRef := make(map[string]remoteAction, len(actions))
+	for _, a := range actions {
+		expectedByRef[a.Ref] = a
+	}
+
+	result := VerifyResult{}
+	for _, a := range actions {
+		lockedSHA, ok := lockByRef[a.Ref]
+		if !ok {
+			result.Missing = append(result.Missing, a.Ref)
+			continue
+		}
+		resolvedSHA, err := resolveSHA(client, a.Owner, a.Repo, a.RequestedRef, token)
+		if err != nil {
+			return VerifyResult{}, fmt.Errorf("resolve %s: %w", a.Ref, err)
+		}
+		if resolvedSHA != lockedSHA {
+			result.Stale = append(result.Stale, VerifyDrift{
+				Ref:         a.Ref,
+				LockedSHA:   lockedSHA,
+				ResolvedSHA: resolvedSHA,
+			})
+		}
+	}
+	for ref := range lockByRef {
+		if _, ok := expectedByRef[ref]; !ok {
+			result.Extra = append(result.Extra, ref)
+		}
+	}
+
+	sort.Strings(result.Missing)
+	sort.Strings(result.Extra)
+	sort.Slice(result.Stale, func(i, j int) bool { return result.Stale[i].Ref < result.Stale[j].Ref })
+	return result, nil
 }
 
 type remoteAction struct {
@@ -157,7 +261,7 @@ func parseRemoteAction(use string) (remoteAction, bool) {
 	}, true
 }
 
-func resolveSHA(owner, repo, requestedRef, token string) (string, error) {
+func resolveSHA(client HTTPClient, owner, repo, requestedRef, token string) (string, error) {
 	if shaPattern.MatchString(requestedRef) {
 		return requestedRef, nil
 	}
@@ -172,7 +276,7 @@ func resolveSHA(owner, repo, requestedRef, token string) (string, error) {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	resp, err := defaultHTTPClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -194,7 +298,7 @@ func resolveSHA(owner, repo, requestedRef, token string) (string, error) {
 	return payload.SHA, nil
 }
 
-func downloadAndExtract(owner, repo, sha, destDir, token string) error {
+func downloadAndExtract(client HTTPClient, owner, repo, sha, destDir, token string) error {
 	u := fmt.Sprintf("%s/%s/%s/zip/%s", strings.TrimSuffix(codeloadBaseURL, "/"), owner, repo, sha)
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
@@ -204,7 +308,7 @@ func downloadAndExtract(owner, repo, sha, destDir, token string) error {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	resp, err := defaultHTTPClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
