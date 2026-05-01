@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/spw-m-riley/streep/compare/v1.3.0...v1.4.0) (2026-02-26)
+
+
+### Features
+
+* **bundle:** add bundle lock verification command ([da5c89d](https://github.com/spw-m-riley/streep/commit/da5c89d54798f40e8183767ec54452ed7fa474b9))
+* **cli:** add config defaults and act arg passthrough ([da47863](https://github.com/spw-m-riley/streep/commit/da47863767befff3148999ea93df0da3ac09a3e2))
+* **cli:** add json output modes and richer workflow diffing ([161aa6a](https://github.com/spw-m-riley/streep/commit/161aa6ad759d9bac6589f4f9c41d8eae259460aa))
+* **cli:** add safety audit command and docs updates ([eb803f5](https://github.com/spw-m-riley/streep/commit/eb803f5f1d39330bb5276a9564108a73be67331b))
+
 ## [1.3.0](https://github.com/spw-m-riley/streep/compare/v1.2.0...v1.3.0) (2026-02-26)
 
 
